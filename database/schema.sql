@@ -189,3 +189,112 @@ create table gbp_posts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Row Level Security
+alter table profiles enable row level security;
+alter table organizations enable row level security;
+alter table organization_members enable row level security;
+alter table stores enable row level security;
+alter table store_keywords enable row level security;
+alter table ai_proposals enable row level security;
+alter table proposal_revisions enable row level security;
+alter table proposal_status_events enable row level security;
+alter table review_reply_templates enable row level security;
+alter table google_reviews enable row level security;
+alter table gbp_posts enable row level security;
+
+create or replace function is_organization_member(target_organization_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from organization_members
+    where organization_id = target_organization_id
+      and profile_id = auth.uid()
+  );
+$$;
+
+create or replace function can_access_store(target_store_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from stores
+    where id = target_store_id
+      and is_organization_member(organization_id)
+  );
+$$;
+
+create or replace function is_organization_admin(target_organization_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from organization_members
+    where organization_id = target_organization_id
+      and profile_id = auth.uid()
+      and role in ('owner', 'admin')
+  );
+$$;
+
+create policy "profiles_select_own" on profiles
+for select using (id = auth.uid());
+create policy "profiles_update_own" on profiles
+for update using (id = auth.uid()) with check (id = auth.uid());
+
+create policy "organizations_insert_authenticated" on organizations
+for insert to authenticated with check (true);
+create policy "organizations_member_access" on organizations
+for all using (is_organization_member(id)) with check (is_organization_member(id));
+
+create policy "organization_members_select_member" on organization_members
+for select using (is_organization_member(organization_id));
+create policy "organization_members_insert_self" on organization_members
+for insert to authenticated with check (profile_id = auth.uid());
+create policy "organization_members_manage_admin" on organization_members
+for all using (is_organization_admin(organization_id))
+with check (is_organization_admin(organization_id));
+
+create policy "stores_member_access" on stores
+for all using (is_organization_member(organization_id))
+with check (is_organization_member(organization_id));
+
+create policy "store_keywords_member_access" on store_keywords
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "ai_proposals_member_access" on ai_proposals
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "review_templates_member_access" on review_reply_templates
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "google_reviews_member_access" on google_reviews
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "gbp_posts_member_access" on gbp_posts
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+
+create policy "proposal_revisions_member_access" on proposal_revisions
+for all using (
+  exists (
+    select 1 from ai_proposals
+    where ai_proposals.id = proposal_revisions.proposal_id
+      and can_access_store(ai_proposals.store_id)
+  )
+);
+create policy "proposal_events_member_access" on proposal_status_events
+for all using (
+  exists (
+    select 1 from ai_proposals
+    where ai_proposals.id = proposal_status_events.proposal_id
+      and can_access_store(ai_proposals.store_id)
+  )
+);

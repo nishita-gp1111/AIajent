@@ -45,6 +45,9 @@ type KurokoContextValue = {
     reason?: string
   ) => void;
   autoReplySafeReviews: (storeId?: string) => number;
+  prepareReviewReply: (reviewId: string) => void;
+  completeReviewReply: (reviewId: string, body: string) => void;
+  skipReviewReply: (reviewId: string) => void;
   autoCreateLowRiskGbpPosts: (storeId?: string) => number;
   updateReviewTemplate: (template: ReviewReplyTemplate) => void;
 };
@@ -285,6 +288,69 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
     return repliedCount;
   }, []);
 
+  const prepareReviewReply = useCallback((reviewId: string) => {
+    setState((current) => {
+      const review = current.googleReviews.find((item) => item.id === reviewId);
+      if (!review) return current;
+      const template = current.reviewTemplates.find(
+        (item) =>
+          item.storeId === review.storeId &&
+          item.rating === review.rating &&
+          item.isActive
+      );
+      if (!template) return current;
+
+      return {
+        ...current,
+        googleReviews: current.googleReviews.map((item) =>
+          item.id === reviewId
+            ? {
+                ...item,
+                replyStatus: "pending_approval" as const,
+                replyBody: templateReply(template, item),
+                updatedAt: nowIso()
+              }
+            : item
+        )
+      };
+    });
+  }, []);
+
+  const completeReviewReply = useCallback((reviewId: string, body: string) => {
+    setState((current) => {
+      const repliedAt = nowIso();
+      return {
+        ...current,
+        googleReviews: current.googleReviews.map((review) =>
+          review.id === reviewId
+            ? {
+                ...review,
+                replyStatus: "replied" as const,
+                replyBody: body,
+                repliedAt,
+                updatedAt: repliedAt
+              }
+            : review
+        )
+      };
+    });
+  }, []);
+
+  const skipReviewReply = useCallback((reviewId: string) => {
+    setState((current) => ({
+      ...current,
+      googleReviews: current.googleReviews.map((review) =>
+        review.id === reviewId
+          ? {
+              ...review,
+              replyStatus: "skipped" as const,
+              updatedAt: nowIso()
+            }
+          : review
+      )
+    }));
+  }, []);
+
   const autoCreateLowRiskGbpPosts = useCallback((storeId?: string) => {
     let createdCount = 0;
     setState((current) => {
@@ -356,6 +422,9 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       updateProposal,
       changeProposalStatus,
       autoReplySafeReviews,
+      prepareReviewReply,
+      completeReviewReply,
+      skipReviewReply,
       autoCreateLowRiskGbpPosts,
       updateReviewTemplate
     }),
@@ -372,6 +441,9 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       updateProposal,
       changeProposalStatus,
       autoReplySafeReviews,
+      prepareReviewReply,
+      completeReviewReply,
+      skipReviewReply,
       autoCreateLowRiskGbpPosts,
       updateReviewTemplate
     ]

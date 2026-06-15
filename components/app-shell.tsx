@@ -10,8 +10,10 @@ import {
   Clock3,
   Home,
   LogOut,
+  MessageSquareMore,
   MessageSquareText,
   Plus,
+  Settings,
   Sparkles
 } from "lucide-react";
 import { Button } from "./ui";
@@ -21,7 +23,9 @@ const navItems = [
   { href: "/dashboard", label: "ダッシュボード", icon: Home },
   { href: "/stores", label: "店舗", icon: Building2 },
   { href: "/proposals", label: "AI提案", icon: MessageSquareText },
-  { href: "/history", label: "投稿履歴", icon: Clock3 }
+  { href: "/reviews", label: "口コミ", icon: MessageSquareMore },
+  { href: "/history", label: "投稿履歴", icon: Clock3 },
+  { href: "/settings", label: "設定", icon: Settings }
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -121,7 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
             </div>
           </div>
-          <nav className="mt-3 grid grid-cols-4 gap-1 lg:hidden">
+          <nav className="mt-3 grid grid-cols-3 gap-1 lg:hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -141,7 +145,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+          <div className="mb-5 rounded-md border border-brass/35 bg-brass/10 px-4 py-3 text-sm font-semibold text-[#765321]">
+            現在はデモ版です。データはこのブラウザ内に保存され、Googleへの実投稿・実返信は行われません。
+          </div>
+          {children}
+        </main>
       </div>
     </div>
   );
