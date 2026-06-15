@@ -54,10 +54,9 @@ export default function StoresPage() {
                     </div>
                     <div>
                       <span className="font-bold text-ink">自動化</span>
+                      <p className="mt-1">投稿: {automationModeLabels[store.postAutomationMode]}</p>
                       <p className="mt-1">
-                        {automationModeLabels[store.automationMode]} / 口コミ
-                        {store.allowTemplateReviewAutoReply ? "ON" : "OFF"} / GBP投稿
-                        {store.allowLowRiskGbpAutoPost ? "ON" : "OFF"}
+                        口コミ: {automationModeLabels[store.reviewAutomationMode]}
                       </p>
                     </div>
                     <div>

@@ -22,9 +22,8 @@ const defaultInput: StoreInput = {
   competitors: [],
   postTone: "親しみやすく、誠実。過度な煽りは避ける",
   ngExpressions: [],
-  automationMode: "approval",
-  allowTemplateReviewAutoReply: false,
-  allowLowRiskGbpAutoPost: false,
+  postAutomationMode: "approval",
+  reviewAutomationMode: "approval",
   postFrequencyPerMonth: 20,
   gbpLocationName: ""
 };
@@ -45,9 +44,8 @@ function inputFromStore(store?: Store): StoreInput {
     competitors: store.competitors,
     postTone: store.postTone,
     ngExpressions: store.ngExpressions,
-    automationMode: store.automationMode,
-    allowTemplateReviewAutoReply: store.allowTemplateReviewAutoReply,
-    allowLowRiskGbpAutoPost: store.allowLowRiskGbpAutoPost,
+    postAutomationMode: store.postAutomationMode,
+    reviewAutomationMode: store.reviewAutomationMode,
     postFrequencyPerMonth: store.postFrequencyPerMonth,
     gbpLocationName: store.gbpLocationName
   };
@@ -181,49 +179,68 @@ export function StoreForm({
       </div>
 
       <div className="grid gap-4 rounded-lg border border-line bg-paper/60 p-4 lg:grid-cols-2">
-        <Field label="自動化モード">
-          <Select
-            value={input.automationMode}
-            onChange={(event) =>
-              setInput({ ...input, automationMode: event.target.value as AutomationMode })
-            }
-          >
-            <option value="approval">承認制</option>
-            <option value="semi_auto">半自動</option>
-            <option value="full_auto">完全自動</option>
-          </Select>
-        </Field>
-        <Field label="月間投稿目安">
-          <Input
-            type="number"
-            min={0}
-            max={31}
-            value={input.postFrequencyPerMonth}
-            onChange={(event) =>
-              setInput({ ...input, postFrequencyPerMonth: Number(event.target.value) })
-            }
-          />
-        </Field>
-        <label className="flex min-h-12 items-center gap-3 rounded-md border border-line bg-white px-3 text-sm font-semibold">
-          <input
-            type="checkbox"
-            checked={input.allowTemplateReviewAutoReply}
-            onChange={(event) =>
-              setInput({ ...input, allowTemplateReviewAutoReply: event.target.checked })
-            }
-          />
-          星4から5の安全な口コミはテンプレ自動返信を許可
-        </label>
-        <label className="flex min-h-12 items-center gap-3 rounded-md border border-line bg-white px-3 text-sm font-semibold">
-          <input
-            type="checkbox"
-            checked={input.allowLowRiskGbpAutoPost}
-            onChange={(event) =>
-              setInput({ ...input, allowLowRiskGbpAutoPost: event.target.checked })
-            }
-          />
-          低リスクGBP投稿の自動投稿を許可
-        </label>
+        <div className="grid gap-4 rounded-md border border-line bg-white p-4">
+          <div>
+            <h2 className="text-base font-bold text-ink">投稿</h2>
+            <p className="mt-1 text-xs leading-5 text-ink/55">
+              GBP投稿案の承認・自動投稿レベルを設定します。
+            </p>
+          </div>
+          <Field label="投稿の自動化モード">
+            <Select
+              value={input.postAutomationMode}
+              onChange={(event) =>
+                setInput({
+                  ...input,
+                  postAutomationMode: event.target.value as AutomationMode
+                })
+              }
+            >
+              <option value="approval">承認制</option>
+              <option value="semi_auto">半自動</option>
+              <option value="full_auto">完全自動</option>
+            </Select>
+          </Field>
+          <Field label="月間投稿目安">
+            <Input
+              type="number"
+              min={0}
+              max={31}
+              value={input.postFrequencyPerMonth}
+              onChange={(event) =>
+                setInput({ ...input, postFrequencyPerMonth: Number(event.target.value) })
+              }
+            />
+          </Field>
+        </div>
+
+        <div className="grid gap-4 rounded-md border border-line bg-white p-4">
+          <div>
+            <h2 className="text-base font-bold text-ink">口コミテンプレート自動返信</h2>
+            <p className="mt-1 text-xs leading-5 text-ink/55">
+              星評価別テンプレートを使う返信の自動化レベルを設定します。
+            </p>
+          </div>
+          <Field label="口コミ返信の自動化モード">
+            <Select
+              value={input.reviewAutomationMode}
+              onChange={(event) =>
+                setInput({
+                  ...input,
+                  reviewAutomationMode: event.target.value as AutomationMode
+                })
+              }
+            >
+              <option value="approval">承認制</option>
+              <option value="semi_auto">半自動</option>
+              <option value="full_auto">完全自動</option>
+            </Select>
+          </Field>
+          <p className="rounded-md bg-paper px-3 py-2 text-xs leading-5 text-ink/60">
+            半自動では星4〜5の安全な口コミのみ自動返信し、低評価・クレーム系は承認待ちにします。
+          </p>
+        </div>
+
         <div className="lg:col-span-2">
           <Field label="GBPロケーション名">
             <Input

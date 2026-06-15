@@ -53,9 +53,8 @@ export type Store = {
   competitors: string[];
   postTone: string;
   ngExpressions: string[];
-  automationMode: AutomationMode;
-  allowTemplateReviewAutoReply: boolean;
-  allowLowRiskGbpAutoPost: boolean;
+  postAutomationMode: AutomationMode;
+  reviewAutomationMode: AutomationMode;
   postFrequencyPerMonth: number;
   gbpLocationName?: string;
   createdAt: string;

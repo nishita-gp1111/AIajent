@@ -13,6 +13,7 @@ import { generateDailyProposals } from "./proposal-generator";
 import { initialState } from "./seed";
 import type {
   AiProposal,
+  AutomationMode,
   GoogleReview,
   KurokoState,
   ProposalInput,
@@ -61,7 +62,33 @@ function safeReadState(): KurokoState {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return initialState;
   try {
-    return JSON.parse(raw) as KurokoState;
+    const parsed = JSON.parse(raw) as Omit<KurokoState, "stores"> & {
+      stores: Array<
+        Omit<Store, "postAutomationMode" | "reviewAutomationMode"> & {
+          postAutomationMode?: AutomationMode;
+          reviewAutomationMode?: AutomationMode;
+          automationMode?: AutomationMode;
+          allowTemplateReviewAutoReply?: boolean;
+          allowLowRiskGbpAutoPost?: boolean;
+        }
+      >;
+    };
+    return {
+      ...parsed,
+      stores: parsed.stores.map((store) => ({
+        ...store,
+        postAutomationMode:
+          store.postAutomationMode ||
+          (store.allowLowRiskGbpAutoPost ? store.automationMode || "semi_auto" : "approval"),
+        reviewAutomationMode:
+          store.reviewAutomationMode ||
+          (store.allowTemplateReviewAutoReply
+            ? store.automationMode === "full_auto"
+              ? "full_auto"
+              : "semi_auto"
+            : "approval")
+      }))
+    };
   } catch {
     return initialState;
   }
@@ -281,8 +308,10 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
         if (review.replyStatus === "replied") return review;
 
         const store = storesById.get(review.storeId);
-        if (!store || !store.allowTemplateReviewAutoReply) return review;
-        if (hasReviewRisk(review, store)) return review;
+        if (!store || store.reviewAutomationMode === "approval") return review;
+        if (store.reviewAutomationMode === "semi_auto" && hasReviewRisk(review, store)) {
+          return review;
+        }
 
         const template = templates.find(
           (item) => item.storeId === review.storeId && item.rating === review.rating
@@ -377,8 +406,7 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       const eligibleStores = current.stores.filter(
         (store) =>
           (!storeId || store.id === storeId) &&
-          store.allowLowRiskGbpAutoPost &&
-          store.automationMode !== "approval"
+          store.postAutomationMode !== "approval"
       );
 
       const created = eligibleStores.flatMap((store) => {

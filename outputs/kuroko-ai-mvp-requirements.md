@@ -304,7 +304,7 @@ proposal_platform:
   website
   internal
 
-automation_mode:
+post_automation_mode / review_automation_mode:
   approval
   semi_auto
   full_auto
@@ -384,7 +384,8 @@ Supabase Authのユーザーに紐づくプロフィール。
 | competitors | text[] | 競合店舗名 |
 | post_tone | text | 投稿のトーン |
 | ng_expressions | text[] | NG表現 |
-| automation_mode | automation_mode | デフォルト approval |
+| post_automation_mode | automation_mode | 投稿の自動化。デフォルト approval |
+| review_automation_mode | automation_mode | 口コミテンプレート返信の自動化。デフォルト approval |
 | gbp_account_name | text nullable | Google側 account resource name |
 | gbp_location_name | text nullable | Google側 location resource name |
 | gbp_place_id | text nullable | Google Place ID |
