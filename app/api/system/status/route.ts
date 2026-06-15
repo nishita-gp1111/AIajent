@@ -6,7 +6,7 @@ export function GET() {
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     ),
-    openai: Boolean(process.env.OPENAI_API_KEY),
+    gemini: Boolean(process.env.GEMINI_API_KEY),
     googleBusinessProfile: Boolean(
       process.env.GOOGLE_CLIENT_ID &&
         process.env.GOOGLE_CLIENT_SECRET &&

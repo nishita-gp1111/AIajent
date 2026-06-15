@@ -9,7 +9,7 @@ type Status = {
   mode: "demo" | "configured";
   credentials: {
     supabase: boolean;
-    openai: boolean;
+    gemini: boolean;
     googleBusinessProfile: boolean;
   };
 };
@@ -26,7 +26,7 @@ export default function SettingsPage() {
 
   const rows = [
     ["Supabase 認証・DB", status?.credentials.supabase],
-    ["OpenAI API", status?.credentials.openai],
+    ["Gemini API", status?.credentials.gemini],
     ["Google Business Profile", status?.credentials.googleBusinessProfile]
   ] as const;
 

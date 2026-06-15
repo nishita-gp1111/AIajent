@@ -37,7 +37,7 @@ type KurokoContextValue = {
   resetDemo: () => void;
   createStore: (input: StoreInput) => Store;
   updateStore: (storeId: string, input: StoreInput) => void;
-  generateProposals: (storeId?: string) => number;
+  generateProposals: (storeId?: string) => Promise<number>;
   updateProposal: (proposalId: string, input: ProposalInput) => void;
   changeProposalStatus: (
     proposalId: string,
@@ -164,21 +164,41 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const generateProposals = useCallback((storeId?: string) => {
-    let createdCount = 0;
-    setState((current) => {
+  const generateProposals = useCallback(
+    async (storeId?: string) => {
       const targetStores = storeId
-        ? current.stores.filter((store) => store.id === storeId)
-        : current.stores;
-      const proposals = generateDailyProposals(targetStores);
-      createdCount = proposals.length;
-      return {
+        ? state.stores.filter((store) => store.id === storeId)
+        : state.stores;
+      if (!targetStores.length) return 0;
+
+      let proposals: AiProposal[];
+      try {
+        const response = await fetch("/api/ai/proposals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stores: targetStores })
+        });
+        const data = (await response.json()) as {
+          proposals?: AiProposal[];
+          error?: string;
+        };
+        if (!response.ok || !data.proposals) {
+          throw new Error(data.error || "提案生成に失敗しました。");
+        }
+        proposals = data.proposals;
+      } catch (error) {
+        console.error("Gemini proposal generation failed; using mock proposals.", error);
+        proposals = generateDailyProposals(targetStores);
+      }
+
+      setState((current) => ({
         ...current,
         proposals: [...proposals, ...current.proposals]
-      };
-    });
-    return createdCount;
-  }, []);
+      }));
+      return proposals.length;
+    },
+    [state.stores]
+  );
 
   const updateProposal = useCallback((proposalId: string, input: ProposalInput) => {
     setState((current) => {

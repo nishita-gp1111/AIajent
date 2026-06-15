@@ -20,10 +20,10 @@
 環境変数を設定しない場合はデモモードです。
 
 - データはブラウザの `localStorage` に保存されます。
-- AI提案はローカルのモック生成です。
+- `GEMINI_API_KEY` 未設定時、AI提案はローカルのモック生成です。
 - Googleへの実投稿・実返信は行いません。
 
-実店舗で本番運用するには、Supabase、OpenAI API、Google Business Profile APIの設定が必要です。
+実店舗で本番運用するには、Supabase、Gemini API、Google Business Profile APIの設定が必要です。
 
 ## ローカル起動
 
@@ -42,11 +42,14 @@ npm run dev
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-OPENAI_API_KEY=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
 ```
+
+Gemini APIキーはGoogle AI Studioで発行します。`GEMINI_API_KEY` を設定すると、提案作成時に店舗情報をGeminiへ送信します。キーはサーバー側だけで利用し、画面には公開しません。
 
 ## Supabase
 
@@ -61,7 +64,7 @@ GOOGLE_REDIRECT_URI=
 
 - デモ認証からSupabase Authへの切り替え
 - localStorageからSupabase DBへの切り替え
-- モック提案生成からOpenAI APIへの切り替え
+- Gemini API提案生成の本番プロンプト調整・監視
 - Google OAuthとGBPロケーション紐付け
 - Google口コミ同期・実返信
 - GBP投稿・画像保存・実投稿
