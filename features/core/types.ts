@@ -38,6 +38,11 @@ export type GbpPostStatus =
   | "rejected"
   | "failed";
 
+export type RankProvider = "playwright" | "serpapi" | "dataforseo";
+export type RankBatchStatus = "running" | "succeeded" | "partial" | "failed";
+export type RankResultStatus = "succeeded" | "not_found" | "failed";
+export type RankDetectionSource = "dom" | "gemini_vision" | "none";
+
 export type Store = {
   id: string;
   name: string;
@@ -145,6 +150,35 @@ export type GbpPost = {
   updatedAt: string;
 };
 
+export type RankResult = {
+  id: string;
+  batchId: string;
+  storeId: string;
+  keyword: string;
+  position?: number;
+  matchedStoreName?: string;
+  status: RankResultStatus;
+  source: RankDetectionSource;
+  confidence: number;
+  resultCount: number;
+  attemptCount: number;
+  error?: string;
+  checkedAt: string;
+};
+
+export type RankBatch = {
+  id: string;
+  storeId: string;
+  provider: RankProvider;
+  status: RankBatchStatus;
+  requestedCount: number;
+  succeededCount: number;
+  failedCount: number;
+  retryOf?: string;
+  startedAt: string;
+  completedAt: string;
+};
+
 export type KurokoState = {
   stores: Store[];
   proposals: AiProposal[];
@@ -153,6 +187,8 @@ export type KurokoState = {
   reviewTemplates: ReviewReplyTemplate[];
   googleReviews: GoogleReview[];
   gbpPosts: GbpPost[];
+  rankBatches: RankBatch[];
+  rankResults: RankResult[];
 };
 
 export type StoreInput = Omit<Store, "id" | "createdAt" | "updatedAt">;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Edit3, Plus, Sparkles } from "lucide-react";
+import { Building2, Edit3, MapPinned, Plus, Sparkles } from "lucide-react";
 import { Button, EmptyState, Panel } from "@/components/ui";
 import { automationModeLabels } from "@/features/core/labels";
 import { useKuroko } from "@/features/core/kuroko-store";
@@ -66,6 +66,12 @@ export default function StoresPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                  <Link href={`/rankings?store=${store.id}`}>
+                    <Button variant="secondary">
+                      <MapPinned className="size-4" />
+                      順位
+                    </Button>
+                  </Link>
                   <Button variant="secondary" onClick={() => generateProposals(store.id)}>
                     <Sparkles className="size-4" />
                     提案作成

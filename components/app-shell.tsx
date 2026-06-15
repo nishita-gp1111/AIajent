@@ -9,6 +9,7 @@ import {
   Building2,
   Clock3,
   Home,
+  MapPinned,
   LogOut,
   MessageSquareMore,
   MessageSquareText,
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/stores", label: "店舗", icon: Building2 },
   { href: "/proposals", label: "AI提案", icon: MessageSquareText },
   { href: "/reviews", label: "口コミ", icon: MessageSquareMore },
+  { href: "/rankings", label: "検索順位", icon: MapPinned },
   { href: "/history", label: "投稿履歴", icon: Clock3 },
   { href: "/settings", label: "設定", icon: Settings }
 ];

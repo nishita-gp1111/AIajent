@@ -18,6 +18,8 @@ import type {
   KurokoState,
   ProposalInput,
   ProposalStatus,
+  RankBatch,
+  RankResult,
   ReviewReplyTemplate,
   Store,
   StoreInput
@@ -51,6 +53,7 @@ type KurokoContextValue = {
   skipReviewReply: (reviewId: string) => void;
   autoCreateLowRiskGbpPosts: (storeId?: string) => number;
   updateReviewTemplate: (template: ReviewReplyTemplate) => void;
+  runRankTracking: (storeId: string, retryBatchId?: string) => Promise<RankBatch>;
 };
 
 const STORAGE_KEY = "kuroko-ai-mvp-state-v1";
@@ -75,6 +78,8 @@ function safeReadState(): KurokoState {
     };
     return {
       ...parsed,
+      rankBatches: parsed.rankBatches || [],
+      rankResults: parsed.rankResults || [],
       stores: parsed.stores.map((store) => ({
         ...store,
         postAutomationMode:
@@ -456,6 +461,59 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const runRankTracking = useCallback(
+    async (storeId: string, retryBatchId?: string) => {
+      const store = state.stores.find((item) => item.id === storeId);
+      if (!store) throw new Error("店舗が見つかりません。");
+
+      const retryKeywords = retryBatchId
+        ? state.rankResults
+            .filter(
+              (result) => result.batchId === retryBatchId && result.status === "failed"
+            )
+            .map((result) => result.keyword)
+        : [];
+      const keywords = (retryKeywords.length ? retryKeywords : store.keywords).slice(0, 20);
+      if (!keywords.length) throw new Error("対策キーワードを1件以上登録してください。");
+
+      const lastSuccessfulAt = state.rankBatches
+        .filter(
+          (batch) =>
+            batch.storeId === storeId &&
+            (batch.status === "succeeded" || batch.status === "partial") &&
+            !batch.retryOf
+        )
+        .sort((a, b) => b.completedAt.localeCompare(a.completedAt))[0]?.completedAt;
+
+      const response = await fetch("/api/rankings/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store,
+          keywords,
+          lastSuccessfulAt,
+          retryOf: retryBatchId
+        })
+      });
+      const data = (await response.json()) as {
+        batch?: RankBatch;
+        results?: RankResult[];
+        error?: string;
+      };
+      if (!response.ok || !data.batch || !data.results) {
+        throw new Error(data.error || "順位取得に失敗しました。");
+      }
+
+      setState((current) => ({
+        ...current,
+        rankBatches: [data.batch as RankBatch, ...current.rankBatches],
+        rankResults: [...(data.results as RankResult[]), ...current.rankResults]
+      }));
+      return data.batch;
+    },
+    [state.rankBatches, state.rankResults, state.stores]
+  );
+
   const value = useMemo(
     () => ({
       state,
@@ -474,7 +532,8 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       completeReviewReply,
       skipReviewReply,
       autoCreateLowRiskGbpPosts,
-      updateReviewTemplate
+      updateReviewTemplate,
+      runRankTracking
     }),
     [
       state,
@@ -493,7 +552,8 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       completeReviewReply,
       skipReviewReply,
       autoCreateLowRiskGbpPosts,
-      updateReviewTemplate
+      updateReviewTemplate,
+      runRankTracking
     ]
   );
 

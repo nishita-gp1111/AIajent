@@ -189,6 +189,42 @@ create table gbp_posts (
   updated_at timestamptz not null default now()
 );
 
+create table ranking_batches (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id) on delete cascade,
+  provider text not null default 'playwright' check (provider in ('playwright', 'serpapi', 'dataforseo')),
+  status text not null default 'running' check (status in ('running', 'succeeded', 'partial', 'failed')),
+  requested_count int not null default 0,
+  succeeded_count int not null default 0,
+  failed_count int not null default 0,
+  retry_of uuid references ranking_batches(id) on delete set null,
+  started_at timestamptz not null default now(),
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table ranking_results (
+  id uuid primary key default gen_random_uuid(),
+  batch_id uuid not null references ranking_batches(id) on delete cascade,
+  store_id uuid not null references stores(id) on delete cascade,
+  keyword text not null,
+  rank_position int check (rank_position is null or rank_position > 0),
+  matched_store_name text,
+  status text not null check (status in ('succeeded', 'not_found', 'failed')),
+  detection_source text not null default 'none' check (detection_source in ('dom', 'gemini_vision', 'none')),
+  confidence numeric(4, 3) not null default 0 check (confidence between 0 and 1),
+  result_count int not null default 0,
+  attempt_count int not null default 1,
+  screenshot_path text,
+  error text,
+  is_reference boolean not null default true,
+  checked_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index ranking_results_store_keyword_checked_idx
+on ranking_results (store_id, keyword, checked_at desc);
+
 -- Row Level Security
 alter table profiles enable row level security;
 alter table organizations enable row level security;
@@ -201,6 +237,8 @@ alter table proposal_status_events enable row level security;
 alter table review_reply_templates enable row level security;
 alter table google_reviews enable row level security;
 alter table gbp_posts enable row level security;
+alter table ranking_batches enable row level security;
+alter table ranking_results enable row level security;
 
 create or replace function is_organization_member(target_organization_id uuid)
 returns boolean
@@ -279,6 +317,10 @@ for all using (can_access_store(store_id)) with check (can_access_store(store_id
 create policy "google_reviews_member_access" on google_reviews
 for all using (can_access_store(store_id)) with check (can_access_store(store_id));
 create policy "gbp_posts_member_access" on gbp_posts
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "ranking_batches_member_access" on ranking_batches
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "ranking_results_member_access" on ranking_results
 for all using (can_access_store(store_id)) with check (can_access_store(store_id));
 
 create policy "proposal_revisions_member_access" on proposal_revisions

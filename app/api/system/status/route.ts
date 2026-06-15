@@ -11,7 +11,8 @@ export function GET() {
       process.env.GOOGLE_CLIENT_ID &&
         process.env.GOOGLE_CLIENT_SECRET &&
         process.env.GOOGLE_REDIRECT_URI
-    )
+    ),
+    rankTracking: process.env.RANK_TRACKING_PROVIDER !== "disabled"
   };
 
   return NextResponse.json({
