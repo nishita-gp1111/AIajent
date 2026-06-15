@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, MapPinned, RefreshCw, Search } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, FileChartColumn, RefreshCw, Search } from "lucide-react";
 import { Button, EmptyState, Metric, Panel, Select } from "@/components/ui";
 import type { RankResult } from "@/features/core/types";
 import { useKuroko } from "@/features/core/kuroko-store";
@@ -55,6 +56,13 @@ export default function RankingsPage() {
     () => state.rankResults.filter((result) => result.storeId === store?.id),
     [state.rankResults, store?.id]
   );
+  const metricSnapshots = useMemo(
+    () =>
+      state.storeMetricSnapshots
+        .filter((snapshot) => snapshot.storeId === store?.id && snapshot.status === "succeeded")
+        .sort((a, b) => b.checkedAt.localeCompare(a.checkedAt)),
+    [state.storeMetricSnapshots, store?.id]
+  );
   const grouped = useMemo(() => latestByKeyword(results), [results]);
   const latestBatch = batches[0];
   const latestSuccessfulBatch = batches.find(
@@ -65,6 +73,12 @@ export default function RankingsPage() {
     ? new Date(new Date(latestSuccessfulBatch.completedAt).getTime() + 7 * 86400000)
     : undefined;
   const canRun = !nextRunAt || nextRunAt.getTime() <= Date.now();
+  const latestMetric = metricSnapshots[0];
+  const previousMetric = metricSnapshots[1];
+  const reviewChange =
+    latestMetric?.reviewCount !== undefined && previousMetric?.reviewCount !== undefined
+      ? latestMetric.reviewCount - previousMetric.reviewCount
+      : undefined;
 
   async function run(retryBatchId?: string) {
     if (!store) return;
@@ -113,6 +127,12 @@ export default function RankingsPage() {
             {isRunning ? <RefreshCw className="size-4 animate-spin" /> : <Search className="size-4" />}
             {isRunning ? "バッチ取得中" : "順位を取得"}
           </Button>
+          <Link href={`/reports?store=${store.id}`}>
+            <Button className="w-full" variant="secondary">
+              <FileChartColumn className="size-4" />
+              レポートを作成
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -122,7 +142,7 @@ export default function RankingsPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
         <Metric label="対象キーワード" value={`${store.keywords.length}/20`} />
         <Metric
           label="最終取得"
@@ -134,7 +154,16 @@ export default function RankingsPage() {
           value={nextRunAt ? nextRunAt.toLocaleDateString("ja-JP") : "今すぐ"}
           note="通常取得は7日間隔"
         />
-        <Metric label="取得方式" value="Playwright" note="曖昧時のみGemini画像判定" />
+        <Metric label="取得方式" value="Playwright" />
+        <Metric
+          label="口コミ件数"
+          value={latestMetric?.reviewCount !== undefined ? `${latestMetric.reviewCount}件` : "未取得"}
+          note={reviewChange === undefined ? undefined : `前回比 ${reviewChange >= 0 ? "+" : ""}${reviewChange}件`}
+        />
+        <Metric
+          label="平均評価"
+          value={latestMetric?.rating !== undefined ? latestMetric.rating.toFixed(1) : "未取得"}
+        />
       </div>
 
       <div className="flex items-start gap-3 rounded-md border border-sky/30 bg-sky/10 px-4 py-3 text-sm leading-6 text-[#2f5b72]">

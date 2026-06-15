@@ -179,6 +179,35 @@ export type RankBatch = {
   completedAt: string;
 };
 
+export type StoreMetricSnapshot = {
+  id: string;
+  batchId: string;
+  storeId: string;
+  rating?: number;
+  reviewCount?: number;
+  status: "succeeded" | "failed";
+  source: "google_maps_dom" | "gemini_vision" | "none";
+  error?: string;
+  checkedAt: string;
+};
+
+export type MarketingReportAction = {
+  priority: "high" | "medium" | "low";
+  title: string;
+  description: string;
+};
+
+export type MarketingReport = {
+  id: string;
+  storeId: string;
+  summary: string;
+  rankingSummary: string;
+  reviewSummary: string;
+  recommendedKeywords: string[];
+  actions: MarketingReportAction[];
+  createdAt: string;
+};
+
 export type KurokoState = {
   stores: Store[];
   proposals: AiProposal[];
@@ -189,6 +218,8 @@ export type KurokoState = {
   gbpPosts: GbpPost[];
   rankBatches: RankBatch[];
   rankResults: RankResult[];
+  storeMetricSnapshots: StoreMetricSnapshot[];
+  marketingReports: MarketingReport[];
 };
 
 export type StoreInput = Omit<Store, "id" | "createdAt" | "updatedAt">;

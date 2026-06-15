@@ -1,9 +1,30 @@
 import { chromium, type Browser } from "playwright";
-import { detectRankFromScreenshot } from "../gemini-vision";
+import {
+  detectRankFromScreenshot,
+  detectStoreMetricsFromScreenshot
+} from "../gemini-vision";
 import { findBestStoreMatch } from "../matching";
 import type { RankLookupInput, RankTrackingProvider } from "../types";
 
 const DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
+function parseMetricText(text: string) {
+  const normalized = text.replaceAll("，", ",").replaceAll("．", ".");
+  const ratingMatch =
+    normalized.match(/(?:^|\s)([1-5]\.\d)(?:\s|$|\()/) ||
+    normalized.match(/([1-5](?:\.\d)?)\s*(?:つ星|stars?)/i);
+  const reviewMatch =
+    normalized.match(/[1-5]\.\d\s*\(([0-9][0-9,]*)\)/) ||
+    normalized.match(
+      /([0-9][0-9,]*)\s*(?:件のクチコミ|件の口コミ|クチコミ|口コミ|reviews?)/i
+    );
+  return {
+    rating: ratingMatch ? Number(ratingMatch[1]) : undefined,
+    reviewCount: reviewMatch
+      ? Number(reviewMatch[1].replaceAll(",", ""))
+      : undefined
+  };
+}
 
 async function extractResultNames(page: import("playwright").Page, maxResults: number) {
   const feed = page.locator('[role="feed"]');
@@ -42,6 +63,77 @@ export class PlaywrightRankProvider implements RankTrackingProvider {
   async close() {
     await this.browser?.close();
     this.browser = undefined;
+  }
+
+  async lookupStoreMetrics(store: RankLookupInput["store"]) {
+    let page: import("playwright").Page | undefined;
+    try {
+      const browser = await this.getBrowser();
+      page = await browser.newPage({
+        locale: "ja-JP",
+        viewport: { width: 1440, height: 1100 }
+      });
+      const query = `${store.name} ${store.address}`.trim();
+      await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}?hl=ja`, {
+        waitUntil: "domcontentloaded",
+        timeout: 45_000
+      });
+      await page.waitForTimeout(1800);
+
+      const bodyText = await page.locator("body").innerText().catch(() => "");
+      if (/unusual traffic|captcha|ロボットではありません/i.test(bodyText)) {
+        throw new Error("Google Maps側で追加確認が必要なため取得を停止しました。");
+      }
+
+      const ariaTexts = await page
+        .locator('[aria-label*="クチコミ"], [aria-label*="口コミ"], [aria-label*="つ星"], [aria-label*="reviews"], [aria-label*="stars"]')
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getAttribute("aria-label") || "")
+        );
+      const detailTexts = await page
+        .locator("div.F7nice")
+        .evaluateAll((elements) => elements.map((element) => element.textContent || ""))
+        .catch(() => [] as string[]);
+      const parsed = [...ariaTexts, ...detailTexts, bodyText]
+        .map(parseMetricText)
+        .reduce(
+          (current, item) => ({
+            rating: current.rating ?? item.rating,
+            reviewCount: current.reviewCount ?? item.reviewCount
+          }),
+          {} as { rating?: number; reviewCount?: number }
+        );
+
+      let source: "google_maps_dom" | "gemini_vision" = "google_maps_dom";
+      if (parsed.rating === undefined || parsed.reviewCount === undefined) {
+        const vision = await page
+          .screenshot({ type: "png", fullPage: false })
+          .then((image) => detectStoreMetricsFromScreenshot({ image, storeName: store.name }))
+          .catch(() => null);
+        if (vision && vision.confidence >= 0.6) {
+          parsed.rating ??= vision.rating ?? undefined;
+          parsed.reviewCount ??= vision.reviewCount ?? undefined;
+          source = "gemini_vision";
+        }
+      }
+
+      if (parsed.rating === undefined && parsed.reviewCount === undefined) {
+        throw new Error("店舗の評価・口コミ件数を画面から確認できませんでした。");
+      }
+      return {
+        ...parsed,
+        status: "succeeded" as const,
+        source
+      };
+    } catch (error) {
+      return {
+        status: "failed" as const,
+        source: "none" as const,
+        error: error instanceof Error ? error.message : "口コミ指標の取得に失敗しました。"
+      };
+    } finally {
+      await page?.close();
+    }
   }
 
   async lookup({ store, keyword, maxResults = 20 }: RankLookupInput) {

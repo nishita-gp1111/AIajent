@@ -17,8 +17,17 @@ export type RankLookupOutput = {
   error?: string;
 };
 
+export type StoreMetricsOutput = {
+  rating?: number;
+  reviewCount?: number;
+  status: "succeeded" | "failed";
+  source: "google_maps_dom" | "gemini_vision" | "none";
+  error?: string;
+};
+
 export interface RankTrackingProvider {
   readonly name: RankProvider;
   lookup(input: RankLookupInput): Promise<RankLookupOutput>;
+  lookupStoreMetrics?(store: Store): Promise<StoreMetricsOutput>;
   close?(): Promise<void>;
 }

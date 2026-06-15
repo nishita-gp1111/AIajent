@@ -47,3 +47,25 @@ button {
 .focus-ring:focus-visible {
   outline-color: #4f7d95;
 }
+
+@media print {
+  aside,
+  header,
+  .demo-banner,
+  .report-controls {
+    display: none !important;
+  }
+
+  .lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}

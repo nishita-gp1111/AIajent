@@ -93,5 +93,7 @@ export const initialState: KurokoState = {
   ],
   gbpPosts: [],
   rankBatches: [],
-  rankResults: []
+  rankResults: [],
+  storeMetricSnapshots: [],
+  marketingReports: []
 };

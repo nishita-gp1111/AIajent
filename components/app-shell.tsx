@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Building2,
   Clock3,
+  FileChartColumn,
   Home,
   MapPinned,
   LogOut,
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/proposals", label: "AI提案", icon: MessageSquareText },
   { href: "/reviews", label: "口コミ", icon: MessageSquareMore },
   { href: "/rankings", label: "検索順位", icon: MapPinned },
+  { href: "/reports", label: "レポート", icon: FileChartColumn },
   { href: "/history", label: "投稿履歴", icon: Clock3 },
   { href: "/settings", label: "設定", icon: Settings }
 ];
@@ -163,7 +165,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         <main className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
-          <div className="mb-5 rounded-md border border-brass/35 bg-brass/10 px-4 py-3 text-sm font-semibold text-[#765321]">
+          <div className="demo-banner mb-5 rounded-md border border-brass/35 bg-brass/10 px-4 py-3 text-sm font-semibold text-[#765321]">
             現在はデモ版です。データはこのブラウザ内に保存され、Googleへの実投稿・実返信は行われません。
           </div>
           {children}

@@ -225,6 +225,34 @@ create table ranking_results (
 create index ranking_results_store_keyword_checked_idx
 on ranking_results (store_id, keyword, checked_at desc);
 
+create table store_metric_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  batch_id uuid references ranking_batches(id) on delete set null,
+  store_id uuid not null references stores(id) on delete cascade,
+  rating numeric(2, 1) check (rating is null or rating between 0 and 5),
+  review_count int check (review_count is null or review_count >= 0),
+  status text not null check (status in ('succeeded', 'failed')),
+  source text not null default 'none' check (source in ('google_maps_dom', 'gemini_vision', 'none')),
+  error text,
+  checked_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index store_metric_snapshots_store_checked_idx
+on store_metric_snapshots (store_id, checked_at desc);
+
+create table marketing_reports (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id) on delete cascade,
+  summary text not null,
+  ranking_summary text not null,
+  review_summary text not null,
+  recommended_keywords text[] not null default '{}',
+  actions jsonb not null default '[]'::jsonb,
+  ai_provider text,
+  created_at timestamptz not null default now()
+);
+
 -- Row Level Security
 alter table profiles enable row level security;
 alter table organizations enable row level security;
@@ -239,6 +267,8 @@ alter table google_reviews enable row level security;
 alter table gbp_posts enable row level security;
 alter table ranking_batches enable row level security;
 alter table ranking_results enable row level security;
+alter table store_metric_snapshots enable row level security;
+alter table marketing_reports enable row level security;
 
 create or replace function is_organization_member(target_organization_id uuid)
 returns boolean
@@ -321,6 +351,10 @@ for all using (can_access_store(store_id)) with check (can_access_store(store_id
 create policy "ranking_batches_member_access" on ranking_batches
 for all using (can_access_store(store_id)) with check (can_access_store(store_id));
 create policy "ranking_results_member_access" on ranking_results
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "store_metric_snapshots_member_access" on store_metric_snapshots
+for all using (can_access_store(store_id)) with check (can_access_store(store_id));
+create policy "marketing_reports_member_access" on marketing_reports
 for all using (can_access_store(store_id)) with check (can_access_store(store_id));
 
 create policy "proposal_revisions_member_access" on proposal_revisions

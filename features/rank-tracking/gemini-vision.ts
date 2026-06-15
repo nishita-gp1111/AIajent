@@ -8,6 +8,12 @@ const visionResultSchema = z.object({
   reason: z.string()
 });
 
+const storeMetricsSchema = z.object({
+  rating: z.number().min(0).max(5).nullable(),
+  reviewCount: z.number().int().nonnegative().nullable(),
+  confidence: z.number().min(0).max(1)
+});
+
 export async function detectRankFromScreenshot(input: {
   image: Buffer;
   storeName: string;
@@ -31,4 +37,18 @@ JSON形式: {"position":1またはnull,"matchedStoreName":"表示名"またはnu
     image: input.image
   });
   return visionResultSchema.parse(raw);
+}
+
+export async function detectStoreMetricsFromScreenshot(input: {
+  image: Buffer;
+  storeName: string;
+}) {
+  if (!isGeminiConfigured()) return null;
+  const raw = await generateGeminiJsonWithImage<unknown>({
+    systemInstruction:
+      "あなたはGoogle Maps店舗画面の数値確認担当です。画像に明確に表示された数値だけを返し、推測しないでください。",
+    prompt: `対象店舗「${input.storeName}」のGoogle Maps画面です。平均評価と口コミ総件数を読み取ってください。表示されていない項目はnullにしてください。JSON形式: {"rating":4.5またはnull,"reviewCount":123またはnull,"confidence":0から1}`,
+    image: input.image
+  });
+  return storeMetricsSchema.parse(raw);
 }

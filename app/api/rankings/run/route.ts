@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { RankBatch, RankResult, Store } from "@/features/core/types";
+import type {
+  RankBatch,
+  RankResult,
+  Store,
+  StoreMetricSnapshot
+} from "@/features/core/types";
 import { createRankTrackingProvider } from "@/features/rank-tracking/providers";
 
 export const maxDuration = 300;
@@ -38,6 +43,22 @@ export async function POST(request: Request) {
       const batchId = randomUUID();
       const startedAt = new Date().toISOString();
       const results: RankResult[] = [];
+      let storeMetric: StoreMetricSnapshot | undefined;
+
+      if (!body.retryOf && provider.lookupStoreMetrics) {
+        const metric = await provider.lookupStoreMetrics(body.store);
+        storeMetric = {
+          id: randomUUID(),
+          batchId,
+          storeId: body.store.id,
+          rating: metric.rating,
+          reviewCount: metric.reviewCount,
+          status: metric.status,
+          source: metric.source,
+          error: metric.error,
+          checkedAt: new Date().toISOString()
+        };
+      }
 
       for (const keyword of body.keywords.slice(0, 20)) {
         let lookup = await provider.lookup({ store: body.store, keyword, maxResults: 20 });
@@ -81,7 +102,7 @@ export async function POST(request: Request) {
         completedAt
       };
 
-      return NextResponse.json({ batch, results });
+      return NextResponse.json({ batch, results, storeMetric });
     } finally {
       await provider.close?.();
     }

@@ -20,6 +20,7 @@ import type {
   ProposalStatus,
   RankBatch,
   RankResult,
+  MarketingReport,
   ReviewReplyTemplate,
   Store,
   StoreInput
@@ -54,6 +55,7 @@ type KurokoContextValue = {
   autoCreateLowRiskGbpPosts: (storeId?: string) => number;
   updateReviewTemplate: (template: ReviewReplyTemplate) => void;
   runRankTracking: (storeId: string, retryBatchId?: string) => Promise<RankBatch>;
+  generateMarketingReport: (storeId: string) => Promise<MarketingReport>;
 };
 
 const STORAGE_KEY = "kuroko-ai-mvp-state-v1";
@@ -80,6 +82,8 @@ function safeReadState(): KurokoState {
       ...parsed,
       rankBatches: parsed.rankBatches || [],
       rankResults: parsed.rankResults || [],
+      storeMetricSnapshots: parsed.storeMetricSnapshots || [],
+      marketingReports: parsed.marketingReports || [],
       stores: parsed.stores.map((store) => ({
         ...store,
         postAutomationMode:
@@ -498,6 +502,7 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       const data = (await response.json()) as {
         batch?: RankBatch;
         results?: RankResult[];
+        storeMetric?: KurokoState["storeMetricSnapshots"][number];
         error?: string;
       };
       if (!response.ok || !data.batch || !data.results) {
@@ -507,11 +512,45 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       setState((current) => ({
         ...current,
         rankBatches: [data.batch as RankBatch, ...current.rankBatches],
-        rankResults: [...(data.results as RankResult[]), ...current.rankResults]
+        rankResults: [...(data.results as RankResult[]), ...current.rankResults],
+        storeMetricSnapshots: data.storeMetric
+          ? [data.storeMetric, ...current.storeMetricSnapshots]
+          : current.storeMetricSnapshots
       }));
       return data.batch;
     },
     [state.rankBatches, state.rankResults, state.stores]
+  );
+
+  const generateMarketingReport = useCallback(
+    async (storeId: string) => {
+      const store = state.stores.find((item) => item.id === storeId);
+      if (!store) throw new Error("店舗が見つかりません。");
+      const response = await fetch("/api/reports/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store,
+          rankResults: state.rankResults.filter((result) => result.storeId === storeId),
+          storeMetrics: state.storeMetricSnapshots.filter(
+            (snapshot) => snapshot.storeId === storeId
+          )
+        })
+      });
+      const data = (await response.json()) as {
+        report?: MarketingReport;
+        error?: string;
+      };
+      if (!response.ok || !data.report) {
+        throw new Error(data.error || "レポート生成に失敗しました。");
+      }
+      setState((current) => ({
+        ...current,
+        marketingReports: [data.report as MarketingReport, ...current.marketingReports]
+      }));
+      return data.report;
+    },
+    [state.rankResults, state.storeMetricSnapshots, state.stores]
   );
 
   const value = useMemo(
@@ -533,7 +572,8 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       skipReviewReply,
       autoCreateLowRiskGbpPosts,
       updateReviewTemplate,
-      runRankTracking
+      runRankTracking,
+      generateMarketingReport
     }),
     [
       state,
@@ -553,7 +593,8 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
       skipReviewReply,
       autoCreateLowRiskGbpPosts,
       updateReviewTemplate,
-      runRankTracking
+      runRankTracking,
+      generateMarketingReport
     ]
   );
 
