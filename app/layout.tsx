@@ -4,7 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "KUROKO AI MVP",
+  title: "牛くんずAI",
   description: "店舗向けAIマーケティング運用管理画面"
 };
 

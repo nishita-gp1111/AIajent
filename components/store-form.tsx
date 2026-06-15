@@ -242,7 +242,10 @@ export function StoreForm({
         </div>
 
         <div className="lg:col-span-2">
-          <Field label="GBPロケーション名">
+          <Field
+            label="GBPロケーション名"
+            hint="本番連携ではOAuth後に管理可能なロケーションから選択します。"
+          >
             <Input
               value={input.gbpLocationName || ""}
               placeholder="accounts/{accountId}/locations/{locationId}"

@@ -2,10 +2,10 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bot,
   Building2,
   Clock3,
   Home,
@@ -43,12 +43,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-line bg-white/86 px-4 py-5 backdrop-blur lg:block">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-md bg-ink text-white">
-            <Bot className="size-5" />
+          <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md border border-line bg-white">
+            <Image
+              src="/brand/ushikuns-ai-mascot.png"
+              alt="牛くんずAI マスコット"
+              width={46}
+              height={56}
+              className="h-12 w-auto object-contain object-top"
+              priority
+            />
           </span>
           <span>
-            <span className="block text-lg font-black tracking-[0.16em]">KUROKO</span>
-            <span className="text-xs font-semibold text-ink/52">AI marketing agent</span>
+            <span className="block text-lg font-black">牛くんずAI</span>
+            <span className="text-xs font-semibold text-ink/52">店舗のAIマーケ担当</span>
           </span>
         </Link>
 
@@ -103,8 +110,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-20 border-b border-line bg-paper/88 px-4 py-3 backdrop-blur lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
-              <Bot className="size-5" />
-              <span className="font-black tracking-[0.12em]">KUROKO</span>
+              <span className="grid size-8 overflow-hidden rounded-md border border-line bg-white">
+                <Image
+                  src="/brand/ushikuns-ai-mascot.png"
+                  alt=""
+                  width={28}
+                  height={34}
+                  className="mx-auto h-8 w-auto object-contain object-top"
+                />
+              </span>
+              <span className="font-black">牛くんずAI</span>
             </Link>
             <div className="hidden text-sm font-semibold text-ink/60 lg:block">
               毎朝の提案確認から承認・投稿履歴まで

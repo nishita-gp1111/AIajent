@@ -149,7 +149,7 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
   const login = useCallback((email: string) => {
     setSession({
       email,
-      name: email.split("@")[0] || "KUROKOユーザー"
+      name: email.split("@")[0] || "牛くんずAIユーザー"
     });
   }, []);
 

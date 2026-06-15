@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert, RotateCcw } from "lucide-react";
+import { CheckCircle2, CircleAlert, KeyRound, MapPin, RotateCcw, ShieldCheck } from "lucide-react";
 import { Button, Panel } from "@/components/ui";
 import { useKuroko } from "@/features/core/kuroko-store";
 
@@ -63,6 +63,35 @@ export default function SettingsPage() {
               </span>
             </div>
           ))}
+        </div>
+      </Panel>
+
+      <Panel
+        title="GBP連携に必要な準備"
+        description="Googleアカウントで認証した後、管理可能な店舗を牛くんずAI側で取得して紐づけます。"
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-md border border-line bg-paper p-4">
+            <KeyRound className="size-5 text-brass" />
+            <h3 className="mt-3 text-sm font-bold">Google Cloud設定</h3>
+            <p className="mt-1 text-xs leading-5 text-ink/60">
+              GBP API利用承認、関連APIの有効化、OAuthクライアントIDとリダイレクトURIが必要です。
+            </p>
+          </div>
+          <div className="rounded-md border border-line bg-paper p-4">
+            <ShieldCheck className="size-5 text-moss" />
+            <h3 className="mt-3 text-sm font-bold">管理権限のあるアカウント</h3>
+            <p className="mt-1 text-xs leading-5 text-ink/60">
+              対象店舗のオーナーまたは管理者権限を持つGoogleアカウントでOAuth認証します。
+            </p>
+          </div>
+          <div className="rounded-md border border-line bg-paper p-4">
+            <MapPin className="size-5 text-sky" />
+            <h3 className="mt-3 text-sm font-bold">店舗ロケーション選択</h3>
+            <p className="mt-1 text-xs leading-5 text-ink/60">
+              認証後にaccountとlocationをAPI取得します。口コミ返信には確認済みロケーションが必要です。
+            </p>
+          </div>
         </div>
       </Panel>
 
