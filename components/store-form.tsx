@@ -3,10 +3,11 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save } from "lucide-react";
+import { DownloadCloud, Save } from "lucide-react";
 import { Button, Field, Input, Select, Textarea } from "./ui";
 import type { AutomationMode, Store, StoreInput } from "@/features/core/types";
 import { splitTextarea, uniqueCompact } from "@/features/core/utils";
+import type { ImportedStoreDraft } from "@/features/store-import/types";
 
 const defaultInput: StoreInput = {
   name: "",
@@ -63,9 +64,78 @@ export function StoreForm({
   const [keywordText, setKeywordText] = useState(() => input.keywords.join("\n"));
   const [competitorText, setCompetitorText] = useState(() => input.competitors.join("\n"));
   const [ngText, setNgText] = useState(() => input.ngExpressions.join("\n"));
+  const [gbpUrl, setGbpUrl] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
   const [error, setError] = useState("");
 
   const keywordCount = useMemo(() => splitTextarea(keywordText).length, [keywordText]);
+
+  function applyImportedDraft(draft: ImportedStoreDraft) {
+    const nextKeywords = uniqueCompact([
+      ...(draft.keywords || []),
+      ...splitTextarea(keywordText)
+    ]).slice(0, 20);
+    const nextStrengths = uniqueCompact([
+      draft.strengths || "",
+      input.strengths
+    ]).join("\n");
+
+    setInput((current) => ({
+      ...current,
+      name: draft.name || current.name,
+      industry: draft.industry || current.industry,
+      address: draft.address || current.address,
+      phoneNumber: draft.phoneNumber || current.phoneNumber,
+      businessHours: draft.businessHours || current.businessHours,
+      services: draft.services || current.services,
+      strengths: nextStrengths || current.strengths,
+      keywords: nextKeywords,
+      gbpLocationName: draft.gbpUrl || current.gbpLocationName
+    }));
+    setKeywordText(nextKeywords.join("\n"));
+  }
+
+  async function importFromGbp() {
+    setError("");
+    setImportMessage("");
+    if (!gbpUrl.trim()) {
+      setError("Google MapsまたはGBPのURLを入力してください。");
+      return;
+    }
+    setIsImporting(true);
+    try {
+      const response = await fetch("/api/stores/import-gbp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: gbpUrl.trim() })
+      });
+      const data = (await response.json()) as {
+        draft?: ImportedStoreDraft;
+        error?: string;
+      };
+      if (!response.ok || !data.draft) {
+        throw new Error(data.error || "店舗情報の読み取りに失敗しました。");
+      }
+      applyImportedDraft(data.draft);
+      const notes = [
+        data.draft.name ? "店舗名" : "",
+        data.draft.address ? "住所" : "",
+        data.draft.phoneNumber ? "電話" : "",
+        data.draft.businessHours ? "営業時間" : "",
+        data.draft.keywords?.length ? "キーワード候補" : ""
+      ].filter(Boolean);
+      setImportMessage(
+        notes.length
+          ? `${notes.join("・")}を反映しました。必要に応じて編集してください。`
+          : "読み取りましたが、反映できる項目が少なかったため手入力で補完してください。"
+      );
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "店舗情報の読み取りに失敗しました。");
+    } finally {
+      setIsImporting(false);
+    }
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -100,6 +170,31 @@ export function StoreForm({
           {error}
         </div>
       ) : null}
+
+      <div className="grid gap-4 rounded-lg border border-line bg-white/82 p-4">
+        <div>
+          <h2 className="text-base font-bold text-ink">Google Maps URLから店舗情報を読み取り</h2>
+          <p className="mt-1 text-xs leading-5 text-ink/55">
+            Google Mapsの共有URLまたはGBPの店舗URLを貼ると、基本情報を下書きに反映します。
+          </p>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+          <Input
+            value={gbpUrl}
+            placeholder="https://maps.app.goo.gl/... または https://www.google.com/maps/place/..."
+            onChange={(event) => setGbpUrl(event.target.value)}
+          />
+          <Button type="button" variant="secondary" disabled={isImporting} onClick={importFromGbp}>
+            <DownloadCloud className="size-4" />
+            {isImporting ? "読み取り中" : "読み取り"}
+          </Button>
+        </div>
+        {importMessage ? (
+          <p className="rounded-md bg-moss/10 px-3 py-2 text-xs font-semibold leading-5 text-[#3e5a43]">
+            {importMessage}
+          </p>
+        ) : null}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Field label="店舗名">
