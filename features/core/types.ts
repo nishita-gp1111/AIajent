@@ -38,7 +38,7 @@ export type GbpPostStatus =
   | "rejected"
   | "failed";
 
-export type RankProvider = "playwright" | "serpapi" | "dataforseo";
+export type RankProvider = "playwright" | "serpapi" | "dataforseo" | "disabled";
 export type RankBatchStatus = "running" | "succeeded" | "partial" | "failed";
 export type RankResultStatus = "succeeded" | "not_found" | "failed";
 export type RankDetectionSource = "dom" | "gemini_vision" | "none";

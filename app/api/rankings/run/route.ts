@@ -7,7 +7,7 @@ import type {
   Store,
   StoreMetricSnapshot
 } from "@/features/core/types";
-import { createRankTrackingProvider } from "@/features/rank-tracking/providers";
+import type { RankTrackingProvider } from "@/features/rank-tracking/types";
 
 export const maxDuration = 300;
 
@@ -20,6 +20,21 @@ const requestSchema = z.object({
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 2;
+
+async function getRankTrackingProvider(): Promise<RankTrackingProvider> {
+  const providerName = process.env.RANK_TRACKING_PROVIDER || "playwright";
+  if (providerName === "disabled") {
+    throw new Error("Cloudflare Workers本番では順位取得バッチを無効化しています。");
+  }
+  if (providerName === "playwright") {
+    const modulePath = "@/features/rank-tracking/providers/" + "playwright-provider";
+    const { PlaywrightRankProvider } = (await import(modulePath)) as {
+      PlaywrightRankProvider: new () => RankTrackingProvider;
+    };
+    return new PlaywrightRankProvider();
+  }
+  throw new Error(`${providerName} プロバイダーはまだ実装されていません。`);
+}
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +53,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const provider = createRankTrackingProvider();
+    const provider = await getRankTrackingProvider();
     try {
       const batchId = randomUUID();
       const startedAt = new Date().toISOString();

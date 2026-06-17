@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert, KeyRound, MapPin, RotateCcw, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleAlert,
+  KeyRound,
+  MapPin,
+  RotateCcw,
+  ShieldCheck,
+  TestTube2
+} from "lucide-react";
 import { Button, Panel } from "@/components/ui";
 import { useKuroko } from "@/features/core/kuroko-store";
 
@@ -11,17 +19,34 @@ type Status = {
     supabase: boolean;
     gemini: boolean;
     googleBusinessProfile: boolean;
+    rankTracking: boolean;
   };
+};
+
+type HealthResult = {
+  ok: boolean;
+  checkedAt: string;
+  env: Record<string, boolean | string>;
+  checks: Record<
+    "supabase" | "gemini" | "stores",
+    {
+      ok: boolean;
+      message: string;
+      details?: Record<string, unknown>;
+    }
+  >;
 };
 
 export default function SettingsPage() {
   const { resetDemo } = useKuroko();
   const [status, setStatus] = useState<Status>();
+  const [health, setHealth] = useState<HealthResult>();
+  const [isTesting, setIsTesting] = useState(false);
 
   useEffect(() => {
     fetch("/api/system/status")
       .then((response) => response.json())
-      .then((data: Status) => setStatus(data));
+      .then((data) => setStatus(data as Status));
   }, []);
 
   const rows = [
@@ -29,6 +54,17 @@ export default function SettingsPage() {
     ["Gemini API", status?.credentials.gemini],
     ["Google Business Profile", status?.credentials.googleBusinessProfile]
   ] as const;
+
+  async function runHealthCheck() {
+    setIsTesting(true);
+    try {
+      const response = await fetch("/api/system/health", { cache: "no-store" });
+      const data = (await response.json()) as HealthResult;
+      setHealth(data);
+    } finally {
+      setIsTesting(false);
+    }
+  }
 
   return (
     <div className="grid gap-6">
@@ -64,6 +100,50 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
+      </Panel>
+
+      <Panel
+        title="接続テスト"
+        description="環境変数を設定した後、Supabase、Gemini、storesテーブルの取得を確認します。"
+        action={
+          <Button variant="secondary" disabled={isTesting} onClick={runHealthCheck}>
+            <TestTube2 className="size-4" />
+            {isTesting ? "確認中" : "接続テスト"}
+          </Button>
+        }
+      >
+        {health ? (
+          <div className="grid gap-3">
+            {[
+              ["Supabase接続テスト", health.checks.supabase],
+              ["Gemini API接続テスト", health.checks.gemini],
+              ["storesテーブル取得テスト", health.checks.stores]
+            ].map(([label, result]) => {
+              const check = result as HealthResult["checks"]["supabase"];
+              return (
+                <div
+                  key={label as string}
+                  className="rounded-md border border-line bg-white px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold">{label as string}</p>
+                    <span className={`text-xs font-bold ${check.ok ? "text-moss" : "text-coral"}`}>
+                      {check.ok ? "成功" : "要確認"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-ink/60">{check.message}</p>
+                </div>
+              );
+            })}
+            <p className="text-xs text-ink/45">
+              最終確認: {new Date(health.checkedAt).toLocaleString("ja-JP")}
+            </p>
+          </div>
+        ) : (
+          <p className="rounded-md bg-paper px-4 py-3 text-sm leading-6 text-ink/60">
+            `.env.local` を設定して開発サーバーを再起動後、接続テストを実行してください。
+          </p>
+        )}
       </Panel>
 
       <Panel

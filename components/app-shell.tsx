@@ -9,6 +9,7 @@ import {
   Building2,
   Clock3,
   FileChartColumn,
+  Rocket,
   Home,
   MapPinned,
   LogOut,
@@ -23,6 +24,7 @@ import { useKuroko } from "@/features/core/kuroko-store";
 
 const navItems = [
   { href: "/dashboard", label: "ダッシュボード", icon: Home },
+  { href: "/launch", label: "運用開始", icon: Rocket },
   { href: "/stores", label: "店舗", icon: Building2 },
   { href: "/proposals", label: "AI提案", icon: MessageSquareText },
   { href: "/reviews", label: "口コミ", icon: MessageSquareMore },

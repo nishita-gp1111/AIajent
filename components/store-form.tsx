@@ -57,7 +57,7 @@ export function StoreForm({
   onSubmit
 }: {
   store?: Store;
-  onSubmit: (input: StoreInput) => void;
+  onSubmit: (input: StoreInput) => void | Promise<void>;
 }) {
   const router = useRouter();
   const [input, setInput] = useState<StoreInput>(() => inputFromStore(store));
@@ -66,6 +66,7 @@ export function StoreForm({
   const [ngText, setNgText] = useState(() => input.ngExpressions.join("\n"));
   const [gbpUrl, setGbpUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -137,8 +138,9 @@ export function StoreForm({
     }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
     const keywords = splitTextarea(keywordText).slice(0, 20);
     if (!input.name.trim()) {
       setError("店舗名を入力してください。");
@@ -153,14 +155,21 @@ export function StoreForm({
       return;
     }
 
-    onSubmit({
-      ...input,
-      keywords,
-      competitors: splitTextarea(competitorText),
-      ngExpressions: uniqueCompact(splitTextarea(ngText)),
-      postFrequencyPerMonth: Number(input.postFrequencyPerMonth) || 20
-    });
-    router.push("/stores");
+    setIsSaving(true);
+    try {
+      await onSubmit({
+        ...input,
+        keywords,
+        competitors: splitTextarea(competitorText),
+        ngExpressions: uniqueCompact(splitTextarea(ngText)),
+        postFrequencyPerMonth: Number(input.postFrequencyPerMonth) || 20
+      });
+      router.push("/stores");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "店舗情報の保存に失敗しました。");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -354,9 +363,9 @@ export function StoreForm({
         <Button type="button" variant="secondary" onClick={() => router.back()}>
           キャンセル
         </Button>
-        <Button type="submit">
+        <Button type="submit" disabled={isSaving}>
           <Save className="size-4" />
-          保存
+          {isSaving ? "保存中" : "保存"}
         </Button>
       </div>
     </form>
