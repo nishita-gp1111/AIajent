@@ -23,7 +23,8 @@ import type {
   MarketingReport,
   ReviewReplyTemplate,
   Store,
-  StoreInput
+  StoreInput,
+  GbpPost
 } from "./types";
 import { includesAny, nowIso, uid } from "./utils";
 
@@ -127,6 +128,50 @@ function hasReviewRisk(review: GoogleReview, store: Store) {
     includesAny(review.comment, riskWords) ||
     includesAny(review.comment, store.ngExpressions) ||
     ["医療", "美容", "士業"].some((word) => store.industry.includes(word))
+  );
+}
+
+function isGbpPostProposal(proposal: AiProposal) {
+  return (
+    proposal.platform === "google_business_profile" &&
+    (proposal.category === "google_business_profile_post" || proposal.category === "gbp_post")
+  );
+}
+
+function gbpPostFromProposal(proposal: AiProposal, stampedAt: string): GbpPost {
+  return {
+    id: uid("gbp_post"),
+    storeId: proposal.storeId,
+    proposalId: proposal.id,
+    title: proposal.title,
+    body: proposal.body,
+    category: proposal.category,
+    targetKeywords: proposal.targetKeywords,
+    status: "posted",
+    postedAt: stampedAt,
+    riskFlags: proposal.riskNotes,
+    createdAt: stampedAt,
+    updatedAt: stampedAt
+  };
+}
+
+function upsertGbpPostFromProposal(posts: GbpPost[], proposal: AiProposal, stampedAt: string) {
+  const nextPost = gbpPostFromProposal(proposal, stampedAt);
+  const exists = posts.some((post) => post.proposalId === proposal.id);
+  if (!exists) return [nextPost, ...posts];
+  return posts.map((post) =>
+    post.proposalId === proposal.id
+      ? {
+          ...post,
+          title: proposal.title,
+          body: proposal.body,
+          category: proposal.category,
+          targetKeywords: proposal.targetKeywords,
+          status: "posted" as const,
+          postedAt: stampedAt,
+          updatedAt: stampedAt
+        }
+      : post
   );
 }
 
@@ -278,28 +323,47 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
         const target = current.proposals.find((proposal) => proposal.id === proposalId);
         if (!target) return current;
         const stampedAt = nowIso();
+        const store = current.stores.find((item) => item.id === target.storeId);
+        const shouldAutoPost =
+          status === "approved" &&
+          isGbpPostProposal(target) &&
+          store?.postAutomationMode !== "approval";
+        const nextStatus = shouldAutoPost ? "posted" : status;
+        const postedAt =
+          nextStatus === "posted" && isGbpPostProposal(target)
+            ? stampedAt
+            : target.postedAt;
 
+        const proposals = current.proposals.map((proposal) =>
+          proposal.id === proposalId
+            ? {
+                ...proposal,
+                status: nextStatus,
+                approvedAt:
+                  nextStatus === "approved" || nextStatus === "posted"
+                    ? stampedAt
+                    : proposal.approvedAt,
+                postedAt,
+                rejectedReason: nextStatus === "rejected" ? reason : proposal.rejectedReason,
+                updatedAt: stampedAt
+              }
+            : proposal
+        );
+        const updatedTarget = proposals.find((proposal) => proposal.id === proposalId) || target;
         return {
           ...current,
-          proposals: current.proposals.map((proposal) =>
-            proposal.id === proposalId
-              ? {
-                  ...proposal,
-                  status,
-                  approvedAt: status === "approved" ? stampedAt : proposal.approvedAt,
-                  postedAt: status === "posted" ? stampedAt : proposal.postedAt,
-                  rejectedReason: status === "rejected" ? reason : proposal.rejectedReason,
-                  updatedAt: stampedAt
-                }
-              : proposal
-          ),
+          proposals,
+          gbpPosts:
+            nextStatus === "posted" && isGbpPostProposal(updatedTarget)
+              ? upsertGbpPostFromProposal(current.gbpPosts, updatedTarget, stampedAt)
+              : current.gbpPosts,
           statusEvents: [
             {
               id: uid("event"),
               proposalId,
               fromStatus: target.status,
-              toStatus: status,
-              reason,
+              toStatus: nextStatus,
+              reason: shouldAutoPost ? "投稿自動化設定により承認後に自動投稿" : reason,
               createdAt: stampedAt
             },
             ...current.statusEvents
@@ -446,10 +510,14 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
           }
         ];
       });
+      const createdPosts = created
+        .filter(isGbpPostProposal)
+        .map((proposal) => gbpPostFromProposal(proposal, proposal.postedAt || proposal.createdAt));
 
       return {
         ...current,
-        proposals: [...created, ...current.proposals]
+        proposals: [...created, ...current.proposals],
+        gbpPosts: [...createdPosts, ...current.gbpPosts]
       };
     });
     return createdCount;

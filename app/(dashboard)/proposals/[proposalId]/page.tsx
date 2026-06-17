@@ -68,11 +68,11 @@ export default function ProposalDetailPage() {
           </Button>
           <Button
             variant="secondary"
-            disabled={proposal.status === "rejected"}
+            disabled={proposal.status === "rejected" || proposal.status === "posted"}
             onClick={() => changeProposalStatus(proposal.id, "posted")}
           >
             <Send className="size-4" />
-            投稿済み
+            投稿する
           </Button>
         </div>
       </div>
