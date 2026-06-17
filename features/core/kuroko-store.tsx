@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { generateDailyProposals } from "./proposal-generator";
-import { initialState } from "./seed";
+import { buildDefaultReviewTemplates, initialState } from "./seed";
 import type {
   AiProposal,
   AutomationMode,
@@ -180,7 +180,11 @@ export function KurokoProvider({ children }: { children: ReactNode }) {
     };
     setState((current) => ({
       ...current,
-      stores: [store, ...current.stores]
+      stores: [store, ...current.stores],
+      reviewTemplates: [
+        ...buildDefaultReviewTemplates(store),
+        ...current.reviewTemplates
+      ]
     }));
     return store;
   }, []);
